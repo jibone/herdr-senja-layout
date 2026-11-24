@@ -38,7 +38,7 @@ Herdr regenerates:
 ```sh
 H=~/.config/herdr-app
 cp $H/layouts/main-copy.json layouts/senja.json   # keep the root "theme"/"preview" keys
-rsync -a --exclude gpui-kit.d.ts $H/mods/{tabs-jot,jot,herdr-nvim,herdr-nvim-header,gitview,gitview-*,usage-limits} mods/
+rsync -a --exclude gpui-kit.d.ts $H/mods/{agents-card,tabs-jot,jot,herdr-nvim,herdr-nvim-header,gitview,gitview-*,usage-limits} mods/
 herdr-app shot preview.png
 ```
 

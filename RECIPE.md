@@ -12,7 +12,7 @@ Left to right, top to bottom. Sizes are logical px at zoom 1; the screenshot is 
 - **Sidebar**, 268px wide (min 44, max 480, not drag-resizable), background `chrome` (`#1a1b26`). Top to bottom:
   - **Brand row**, 46px (the shipped `workspace-chrome`): the Herdr logo and "Herdr", plus search and sidebar-fold buttons. Dragging it moves the window.
   - **Spaces** (the shipped `spaces`, weight 1, min 90): a "Spaces" header with a +. Each space is a row with a colored letter avatar, its name and, dimmed on the right, its git branch. The active space has a `selected` (`#33467c`) pill.
-  - **Agents** (the shipped `agents`, weight 1, min 90): an "Agents" header with a history clock. Agents are grouped by status (Working, Blocked, Done, Idle), each group with a count. A row shows the program icon, the space name, the dimmed tab title, the age (`3h`) and a status mark.
+  - **Agents** (`agents-card`, weight 1, min 90): an "Agents" header with a sort button. Agents are grouped by status (Working, Needs you, Done, Idle), each group with a count. Each agent is a **card**: background `surface` (`#1f2335`), a 1px `border` outline, radius 10, padding 9/10, 6px apart. When the agent is focused, the card turns `selected` with an `accent` outline. On the left is a 32px `raised` (`#292e42`) tile, radius 8, holding the program's 20px logo (or its first letter). Beside it are two lines. On top: the **space name** (13px, medium, `foreground`, or `muted` when idle), then the age (`3h`, 11px `dim`) and the status mark at the right. Below: the **session's short description** (12px `dim`, cut off with …), which is the agent's live title, the tab's name, or the program name.
   - **Footer**, 69px (`workspace-chrome` with `{footer: true}`): Settings and Add machine.
 - **Work area** (a column, not resizable):
   - **Tab bar**, 42px (`tabs-jot`), background `chrome` with a 1px `border` bottom line. Dragging it moves the window. Tabs are 29px pills: radius 7, text 12.8px, program icon 14px, names cut off at 170px. The active tab is `raised` (`#292e42`) with a `border` outline, `foreground` text and a close ×. The others are `chrome` with `muted` (`#a9b1d6`) text. On the right are a 26px **+**, then the **Files**, **Changes** and **Jot** pills (26px, text 12px, 14px icon). A pill is `selected` while its panel shows, else `chrome`/`muted`.
@@ -27,7 +27,7 @@ Left to right, top to bottom. Sizes are logical px at zoom 1; the screenshot is 
 
 ## How it behaves
 
-- **Agent status:** the colors come from the theme: working `#7dcfff`, blocked `#f7768e`, done `#9ece6a`, idle `#bb9af7`. In the agents list, working shows a spinner and idle a hollow ring. In the tab pills, working is a 12px spinning `workspace-chrome/spinner.svg` (900 ms a turn), and blocked or done is a 6px dot. Pane headers show the shipped status spinner.
+- **Agent status:** the colors come from the theme: working `#7dcfff`, blocked `#f7768e`, done `#9ece6a`, idle `#bb9af7`. On the agent cards, working shows a spinner, idle a hollow ring, done a dot, and blocked a red "Needs you" chip ("!" under the Needs you header). In the tab pills, working is a 12px spinning `workspace-chrome/spinner.svg` (900 ms a turn), and blocked or done is a 6px dot. Pane headers show the shipped status spinner.
 - **Tabs:**
   - Click a tab to select it. Double-click to rename it (`tab.rename`). Drag one pill onto another to reorder (`tab.move`). Right-click opens the shipped `menu` popup.
   - The mouse wheel moves one tab per notch. A trackpad swipe moves one tab per ~20px, then one per 60px, at most one every 100 ms.
@@ -61,7 +61,7 @@ Left to right, top to bottom. Sizes are logical px at zoom 1; the screenshot is 
 - **Layout `layouts/senja.json`.** Root keys: `"type": "row"`, `"theme": "tokyo-night"`, `"preview": "layouts/senja.png"`, `"background": "canvas"`, `"terminal_padding": [14, 12]`, `"divider": {"width": 1, "color": "border"}`, `"titlebar": "none"`, `"traffic_lights": [12, 16]`. The tree:
   - `sidebar` column (268px, min 44, max 480, `chrome` background, `resizable: false`):
     - `brand`: `workspace-chrome`, 46px, `window_drag: true`.
-    - `sidebar-lists` column: `spaces` and `agents` blocks, weight 1 each, min 90.
+    - `sidebar-lists` column: `spaces` and `agents` (mod `agents-card`) blocks, weight 1 each, min 90.
     - `sidebar-footer`: `workspace-chrome` with `{footer: true}`, 69px.
   - `work` column (`resizable: false`):
     - `tabs`: `tabs-jot`, 42px, `window_drag: true`.
@@ -73,8 +73,9 @@ Left to right, top to bottom. Sizes are logical px at zoom 1; the screenshot is 
   - `floating`: `herdr-nvim-sync`, a `herdr-nvim` block with `{role: "sync"}`, `edge: "bottom"`, `align: "end"`.
 
   The block ids `panel`, `panel-body`, `files`, `changes` and `jot` are part of the contract: the mods find their nodes by id.
-- **Shipped mods used as-is:** `workspace-chrome`, `spaces`, `agents`, `workspace-status`, `new-menu`, `menu`. Assets: `mods/workspace-chrome/spinner.svg`, `mods/pane/close.svg`, `mods/files/file.svg`, `mods/changes/changes.svg`.
+- **Shipped mods used as-is:** `workspace-chrome`, `spaces`, `workspace-status`, `new-menu`, `menu`. Assets: `mods/workspace-chrome/spinner.svg`, `mods/pane/close.svg`, `mods/files/file.svg`, `mods/changes/changes.svg`.
 - **`tabs-jot`** (the person's own, MIT): a fork of the shipped `tabs`. It adds the Jot pill, which runs `layout.toggle {id: "jot"}` and appears only when the layout has a `jot` block. It also adds per-space memory of the jot block in localStorage `pads`, next to the shipped panel memory in `panels`. It reads shared `"workspace.panels"` to decide which of the Files and Changes pills show. Commands: `tab.select`, `tab.move`, `tab.rename`, `tab.close`, `tab.prev`, `tab.next`, `layout.select`, `layout.show`, `layout.hide`, `layout.toggle`, `window.*`. Its own assets are the Windows window-button SVGs.
+- **`agents-card`** (the person's own): a clone of the shipped `agents` (0.1.17). Only the wide row changed, into the card described above. The narrow rail, sub-agent rows, group headers, the sort menu (`agents-card` popup), pins (shown on hover in place of the age) and `setAgentOrder` are the shipped code unchanged. Clicking a card runs `pane.focus`. Clicking the logo tile folds an agent's sub-agents.
 - **`jot`** (the person's own, MIT): a `Textarea` over `data/jot/jot.txt`. It uses `readTextFile`, compare-and-swap `writeTextFile(file, text, expected)`, and a `watchFolder` loop (skipped under `checking()`). Only one write runs at a time, with the latest text first.
 - **`herdr-nvim`** plus **`herdr-nvim-header`** (third-party, from herdr-nvim's `herdr-app/install.sh`):
   - One mod with several roles, chosen by props: the tree (the `files` slot), the controller (`{role: "sync"}`), a preview pane, dialogs, and the `mod.open:herdr-nvim` overlay.
@@ -99,6 +100,7 @@ Left to right, top to bottom. Sizes are logical px at zoom 1; the screenshot is 
   - `mods/herdr-nvim/bin/herdr-nvim` and `mods/gitview/config.json` contain absolute paths to `/Users/jibone/...`.
   - `bin/herdr-gitview` is a macOS arm64 binary.
   - On another machine, run herdr-nvim's installer, which installs the Neovim plugin into `~/.local/share/herdr-nvim` and rewrites the launcher. Then fix the three paths in gitview's `config.json`. Without these, the tree, the Neovim pane and gitview log errors, while the rest of the layout works.
+- `agents-card` is a clone of the shipped `agents` from 0.1.17 and is never updated. Its ages start fresh after a clone (the times when status changed live in that mod's own localStorage).
 - `herdr-nvim-header/pane-base.js` is a copy of the shipped `pane` header from Herdr 0.1.16. If Herdr's header moves on, recopy it, or the headers look dated.
 - `tabs-jot` is a fork of the shipped `tabs` from 0.1.16 and is never updated. To pick up upstream fixes, re-clone `tabs` and re-apply the Jot changes (they are marked "The fork's addition").
 - The **Files** pill only appears while shared `"workspace.panels"` includes `"files"`. herdr-nvim removes it in `tree = "nvim"` mode. The **Jot** pill only appears when a block with id `jot` exists.
@@ -116,5 +118,6 @@ Left to right, top to bottom. Sizes are logical px at zoom 1; the screenshot is 
 - Clicking **Jot** (or `cmd-shift-s`) opens a 420px pad. Typing writes `data/jot/jot.txt`. Another space shows the same text, and an outside `echo hi >> data/jot/jot.txt` shows up in the pad.
 - Clicking **Files** opens the 300px tree and the tab's Neovim pane together. Clicking it again closes both.
 - Clicking **Changes** in a git repo lists changed files. Clicking one opens its diff pane.
-- An agent that is working shows a spinner on its tab pill and in the agents list. When it finishes, the pill shows a green `#9ece6a` dot.
+- Each agent in the sidebar is a card: logo tile on the left, the space name on top, the session description below.
+- An agent that is working shows a spinner on its tab pill and on its card. When it finishes, the pill shows a green `#9ece6a` dot.
 - With `claude` installed, the status bar's right side shows Claude's `5h` and `wk` meters.
