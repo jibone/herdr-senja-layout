@@ -1,0 +1,17 @@
+{
+  "global": {
+    "cmd-e": "mod.open:herdr-nvim",
+    "cmd-o": "herdr-nvim.pick",
+    "cmd-shift-e": "herdr-nvim.reveal",
+    "cmd-shift-g": "mod.open:gitview-sidebar",
+    "cmd-g": "mod.open:gitview-tab"
+  },
+  "layout:senja": {
+    "cmd-shift-s": {
+      "command": "layout.toggle",
+      "args": {
+        "id": "jot"
+      }
+    }
+  }
+}
