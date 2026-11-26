@@ -31,7 +31,7 @@
               "id": "spaces",
               "type": "block",
               "content": {
-                "mod": "spaces"
+                "mod": "spaces-scenery"
               },
               "size": {
                 "weight": 1

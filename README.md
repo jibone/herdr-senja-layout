@@ -2,11 +2,25 @@
 
 My [Herdr](https://herdr.dev) setup, kept as a shareable layout folder.
 
-![Senja](preview.png)
+![Senja layout](preview.png)
+
+## Professional and Fun modes
+
+Press **Cmd + Ctrl + G** while the Agents panel is visible to switch modes. Herdr remembers your choice across restarts.
+
+| Professional mode | Fun mode |
+| --- | --- |
+| ![Professional mode sidebar](professional-mode.png) | ![Fun mode sidebar with anime portraits and cityscapes](fun-mode.png) |
+
+Professional mode uses the standard harness icons and compact space list. Fun mode adds anime portraits to supported agent cards and larger space cards with Tokyo Night–colored anime cityscapes. Each space gets a stable scene from 20 bundled images; the selected space is untinted and other spaces are shaded. Agent cards show the harness and space name in both modes. Unknown harnesses keep their usual icons.
+
+The narrow sidebar stays compact in both modes.
 
 ```
 RECIPE.md          the brief: build Senja from an empty folder
-preview.png        screenshot
+preview.png        layout screenshot
+fun-mode.png       Fun mode sidebar
+professional-mode.png  Professional mode sidebar
 layouts/senja.json the layout (+ senja.png, its settings-screen preview)
 mods/              every non-shipped mod the layout uses
 themes/            tokyo-night.json
@@ -30,6 +44,7 @@ keys.json          the keys the layout's mods expect
 
 My settings.json look: `"theme": "tokyo-night"`, `"appearance": "dark"`, `"zoom": 1.2`.
 
+
 ## Updating this repo after changing the layout
 
 Copy the live files back into this repo, without the `gpui-kit.d.ts` files
@@ -38,7 +53,7 @@ Herdr regenerates:
 ```sh
 H=~/.config/herdr-app
 cp $H/layouts/main-copy.json layouts/senja.json   # keep the root "theme"/"preview" keys
-rsync -a --exclude gpui-kit.d.ts $H/mods/{agents-card,tabs-jot,jot,herdr-nvim,herdr-nvim-header,gitview,gitview-*,usage-limits} mods/
+rsync -a --exclude gpui-kit.d.ts $H/mods/{agents-card,spaces-scenery,tabs-jot,jot,herdr-nvim,herdr-nvim-header,gitview,gitview-*,usage-limits} mods/
 herdr-app shot preview.png
 ```
 
