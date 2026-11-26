@@ -121,3 +121,5 @@ Left to right, top to bottom. Sizes are logical px at zoom 1; the screenshot is 
 - Each agent in the sidebar is a card: logo tile on the left, the space name on top, the session description below.
 - An agent that is working shows a spinner on its tab pill and on its card. When it finishes, the pill shows a green `#9ece6a` dot.
 - With `claude` installed, the status bar's right side shows Claude's `5h` and `wk` meters.
+
+- Fun mode (`cmd-ctrl-g`) shows larger space cards with a stable scene chosen from 20 bundled anime landscapes, and agent portraits. The narrow sidebar keeps its compact rows.

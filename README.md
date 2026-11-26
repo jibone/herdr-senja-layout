@@ -30,6 +30,8 @@ keys.json          the keys the layout's mods expect
 
 My settings.json look: `"theme": "tokyo-night"`, `"appearance": "dark"`, `"zoom": 1.2`.
 
+Fun mode (Cmd+Ctrl+G) gives agent cards portraits and spaces scenic backgrounds. Each space keeps a scene selected from 20 bundled images; unsupported agent harnesses retain their normal icons.
+
 ## Updating this repo after changing the layout
 
 Copy the live files back into this repo, without the `gpui-kit.d.ts` files
@@ -38,7 +40,7 @@ Herdr regenerates:
 ```sh
 H=~/.config/herdr-app
 cp $H/layouts/main-copy.json layouts/senja.json   # keep the root "theme"/"preview" keys
-rsync -a --exclude gpui-kit.d.ts $H/mods/{agents-card,tabs-jot,jot,herdr-nvim,herdr-nvim-header,gitview,gitview-*,usage-limits} mods/
+rsync -a --exclude gpui-kit.d.ts $H/mods/{agents-card,spaces-scenery,tabs-jot,jot,herdr-nvim,herdr-nvim-header,gitview,gitview-*,usage-limits} mods/
 herdr-app shot preview.png
 ```
 

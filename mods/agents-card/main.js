@@ -2,7 +2,7 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout } from "herdr";
+import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, nextCommand } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -77,6 +77,8 @@ function duration(ms) {
 
 // The agent's icon from the app's program table: a one-color glyph or a picture.
 function icon(p, size, color) {
+  const portraits = ["claude", "codex", "opencode", "copilot", "gemini", "pi", "omp"];
+  if (shared("agents.fun") && portraits.includes(p?.key)) return image(`mods/agents-card/portraits/${p.key}.png`).w(size).h(size).flex_none();
   if (!p?.icon) return null;
   return p.tint ? svg(p.icon).size(size).flex_none().text_color(color) : image(p.icon).w(size).h(size).flex_none();
 }
@@ -84,6 +86,18 @@ function icon(p, size, color) {
 export default class Agents extends View {
   init(_props, cx) {
     if (props()?.sortMenu) return;
+    setShared("agents.fun", localStorage.getItem("fun-mode") === "true");
+    cx.spawn(async (cx) => {
+      for (;;) {
+        const command = await nextCommand();
+        if (command === "toggle-fun") {
+          const fun = !shared("agents.fun");
+          localStorage.setItem("fun-mode", String(fun));
+          setShared("agents.fun", fun);
+        }
+        cx.notify();
+      }
+    });
     this.folded = new Set();
     // Each agent's last state and when it changed (ms), kept across restarts.
     try { this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}"); } catch { this.changed = {}; }
@@ -345,14 +359,16 @@ export default class Agents extends View {
       // in a 32px tile; beside it, the space name on top and the session's
       // short description (the agent's live title or the tab's name) below.
       const space = a.space_name || label(a);
+      const harness = a.program?.name || a.program?.key || "Agent";
       const desc = more ?? (/^\d+$/.test(label(a)) ? a.program?.name || label(a) : label(a));
-      const logo = icon(a.program, 20, t.foreground)
+      const portrait = shared("agents.fun") && ["claude", "codex", "opencode", "copilot", "gemini", "pi", "omp"].includes(a.program?.key);
+      const logo = icon(a.program, portrait ? 64 : 20, t.foreground)
         ?? div().text_size(13).font_semibold().text_color(t.muted).child((a.program?.name || "?").slice(0, 1).toUpperCase());
       return h_flex()
         .id(`ag-${a.address}`)
         .mb(6)
-        .px(10)
-        .py(9)
+        .when(!portrait, el => el.px(10).py(9))
+        .when(portrait, el => el.p(4).pr(10).overflow_hidden())
         .flex_none()
         .rounded(10)
         .items_center()
@@ -369,7 +385,9 @@ export default class Agents extends View {
         })
         .on_click(() => run("pane.focus", { pane: a.pane }))
         .child(div().id(`agent-fold-${a.address}`)
-          .size(32).flex_none().rounded(8).bg(t.raised).flex().items_center().justify_center()
+          .when(portrait, el => el.size(64).rounded(7).overflow_hidden())
+          .when(!portrait, el => el.size(32).rounded(8))
+          .flex_none().bg(t.raised).flex().items_center().justify_center()
           .when(subs.length > 0, el => el.on_click((_e, cx) => {
             cx.stop_propagation();
             this.folded.has(a.address) ? this.folded.delete(a.address) : this.folded.add(a.address);
@@ -378,7 +396,7 @@ export default class Agents extends View {
           .child(logo))
         .child(v_flex().flex_1().min_w(0).gap(2)
           .child(h_flex().gap(6).items_center()
-            .child(div().flex_1().min_w(0).truncate().font_medium().text_color(idle ? t.muted : t.foreground).child(space))
+            .child(div().flex_1().min_w(0).truncate().font_medium().text_color(idle ? t.muted : t.foreground).child(`${harness} · ${space}`))
             .when(Boolean(machine), el => el.child(div().flex_none().text_size(10).text_color(t.dim).child(machine)))
             .when(this.hovered === a.address, el => el.child(pin))
             .when(this.hovered !== a.address && Boolean(when), el => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
