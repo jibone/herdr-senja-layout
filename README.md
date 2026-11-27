@@ -8,7 +8,9 @@ My [Herdr](https://herdr.dev) setup, kept as a shareable layout folder.
 
 Press **Cmd + Ctrl + G** while the Agents panel is visible to switch modes. Herdr remembers your choice across restarts.
 
-![Professional mode sidebar](professional-mode.png)
+| Professional mode | Fun mode |
+| --- | --- |
+| ![Professional mode sidebar](professional-mode.png) | ![Fun mode sidebar with animated chibis and agent portraits](fun-mode.png) |
 
 Professional mode uses the standard harness icons and compact space list. Under each space's name it shows one small icon per agent harness with a session in that space (wrapping when there are many), faded when all of that harness's agents are idle. Fun mode adds anime portraits to supported agent cards and larger space cards with pixel-art chibi characters. Each agent session has its own animated pixel-art chibi: it runs back and forth while working, jumps in place when it needs attention or has finished, and sits and blinks when idle. Agent cards show the harness and space name in both modes. Unknown harnesses keep their usual icons.
 
@@ -17,6 +19,7 @@ The narrow sidebar stays compact in both modes.
 ```
 RECIPE.md          the brief: build Senja from an empty folder
 preview.png        layout screenshot
+fun-mode.png       Fun mode sidebar
 professional-mode.png  Professional mode sidebar
 layouts/senja.json the layout (+ senja.png, its settings-screen preview)
 mods/              every non-shipped mod the layout uses
