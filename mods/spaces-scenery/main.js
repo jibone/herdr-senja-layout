@@ -1,11 +1,12 @@
 // Workspace spaces: stable colored avatars, worktrees under their checkout,
 // grouped by machine when more than one is known. After a space's name, the repo
-// its first terminal is in now, only where unusual: branch, ahead/behind. Agent state lives in the agents list, not here. Click to
+// its first terminal is in now, only where unusual: branch, ahead/behind. Under the name (wide, not fun mode), one small
+// icon per agent harness with a session in the space, faded when all of that harness's agents are idle. Click to
 // switch, right-click for its menu, drag to reorder.
 
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle } from "gpui-base";
-import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, watchFolder, window, layout } from "herdr";
+import { spaces, machines, panes, agents, run, openOverlay, exec, hc, theme, shared, setShared, watchFolder, window, layout, settings } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -26,12 +27,6 @@ function place(s, ps) {
   return ps.find((p) => tabs.has(p.tab) && p.cwd)?.cwd || s.folder;
 }
 const rowHeight = ({ tree }) => (tree ? 28 : 30);
-// A stable hash gives each space a scene without changing it on refresh.
-const scene = (id) => {
-  let h = 2166136261;
-  for (const c of id) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
-  return (h >>> 0) % 20 + 1;
-};
 const RAIL_CELL = 32;
 // A space's name and its git tail never shrink below this, so a short one ("api")
 // stays readable instead of turning into an ellipsis next to a long branch.
@@ -74,6 +69,41 @@ function spaceAvatar(name) {
   return EMOJI.exec(name)?.[0] ?? ([...name][0]?.toUpperCase() ?? "?");
 }
 
+// Each space's agent harnesses, in the order their first agent appears: one entry
+// per harness however many sessions it has, `idle` while none of them is busy,
+// waiting on you or newly done.
+function harnesses(list = agents()) {
+  const by = new Map();
+  for (const a of list) {
+    const key = a.program?.key ?? a.program?.name ?? a.app ?? "agent";
+    let mine = by.get(a.space);
+    if (!mine) by.set(a.space, mine = new Map());
+    const h = mine.get(key) ?? { key, program: a.program, count: 0, idle: true };
+    h.count += 1;
+    if (a.status !== "idle") h.idle = false;
+    if (a.status === "working") h.working = true;
+    if (a.status === "blocked" || a.status === "done") h.attention = true;
+    mine.set(key, h);
+  }
+  return by;
+}
+// Fun mode tracks sessions separately, even when they use the same harness.
+function sessions(list = agents()) {
+  const by = new Map();
+  for (const a of list) {
+    const key = a.program?.key ?? a.program?.name ?? a.app ?? "agent";
+    const id = JSON.stringify([a.space, a.address, a.pane]);
+    const h = { id, key, program: a.program, count: 1, idle: a.status === "idle",
+      working: a.status === "working", attention: a.status === "blocked" || a.status === "done" };
+    if (!by.has(a.space)) by.set(a.space, []);
+    by.get(a.space).push(h);
+  }
+  return by;
+}
+const AGENT_ICON = 13;
+const CHIBI = 38;
+const CHIBI_KEYS = ["claude", "codex", "opencode", "copilot", "gemini", "pi", "omp"];
+
 // A space speaks up only when something in it needs you.
 export function glyph(status) {
   return status === "blocked" || status === "done" ? "●" : "·";
@@ -85,6 +115,10 @@ export function tone(t, status) {
 
 export default class Spaces extends View {
   init(_props, cx) {
+    this.runners = new Map();
+    this.cardWidths = {};
+    this.lastStep = Date.now();
+    cx.timer.every(80, cx => this.stepRunners(cx));
     this.git = {}; // where() -> { name, branch, ahead, behind, repo, linked }, null: not a repo
     this.checked = {}; // where() -> when it was last looked at
     this.unsure = new Set(); // where()s git couldn't answer for (a machine away)
@@ -112,6 +146,55 @@ export default class Spaces extends View {
     cx.timer.every(15000, cx => this.refreshMachines(cx));
     // Refresh only when the refs could have changed (see `due`).
     cx.timer.every(250, (cx) => this.checkNew(cx));
+  }
+
+  stepRunners(cx) {
+    const now = Date.now();
+    const dt = Math.min(now - this.lastStep, 100) / 1000;
+    this.lastStep = now;
+    const visible = Boolean(shared("agents.fun")) && !narrow() && window().active;
+    const all = sessions();
+    const alive = new Set();
+    let moving = false;
+    for (const [space, entries] of all) for (const [index, h] of entries.entries()) {
+      const id = h.id;
+      alive.add(id);
+      let runner = this.runners.get(id);
+      if (!runner) {
+        runner = { x: (index + 0.5) / entries.length, direction: 1, step: 0 };
+        this.runners.set(id, runner);
+      }
+      if (!visible) continue;
+      const state = h.attention ? "jump" : h.working ? "run" : "sit";
+      if (runner.state !== state) { runner.state = state; runner.step = 0; runner.frame = -1; }
+      runner.step += dt;
+      const frame = Math.floor(runner.step * (state === "run" ? 8 : state === "jump" ? 4 : 1)) % 4;
+      if (frame !== runner.frame) { runner.frame = frame; moving = true; }
+      if (state !== "run") continue;
+      moving = true;
+      const distance = Math.max(1, (this.cardWidths[space] ?? 180) - CHIBI - 16);
+      runner.x += runner.direction * 38 * dt / distance;
+      if (runner.x >= 1) { runner.x = 2 - runner.x; runner.direction = -1; }
+      if (runner.x <= 0) { runner.x = -runner.x; runner.direction = 1; }
+    }
+    for (const id of this.runners.keys()) if (!alive.has(id)) this.runners.delete(id);
+    if (moving) cx.notify();
+  }
+
+  chibi(w, h, t) {
+    const runner = this.runners.get(h.id) ?? { x: 0, direction: 1, step: 0 };
+    const width = this.cardWidths[w.id] ?? 180;
+    const x = 8 + runner.x * Math.max(0, width - CHIBI - 16);
+    const key = h.program?.key;
+    const known = CHIBI_KEYS.includes(key);
+    const state = h.attention ? "jump" : h.working ? "run" : "sit";
+    const frame = runner.state === state ? (runner.frame ?? 0) : 0;
+    const lift = state === "jump" ? [0, 5, 14, 5][Math.max(0, frame)] : 0;
+    const pic = known
+      ? image(`mods/spaces-scenery/chibi/sprites/${key}-${state}-${Math.max(0, frame) + 1}-${runner.direction < 0 ? "left" : "right"}.png`).size(CHIBI).flex_none()
+      : this.agentIcon(w, h, t);
+    return div().absolute().left(x).bottom(1 + lift)
+      .size(CHIBI).flex().items_center().justify_center().child(pic);
   }
 
   checkNew(cx) {
@@ -359,6 +442,9 @@ export default class Spaces extends View {
   // The rows, under a header per machine once one isn't this computer.
   grouped(t, collapsed) {
     const rows = this.ordered();
+    const list = agents();
+    this.harnesses = harnesses(list);
+    this.sessions = sessions(list);
     const draw = (r) => (collapsed ? this.compact(r, t) : this.row(r, t));
     // Where the active space's row lands among the children this returns: the list scrolls by its direct
     // children, and machine headers, login notes and loading rows count too.
@@ -468,9 +554,24 @@ export default class Spaces extends View {
       .when(g.behind > 0, (el) => el.child(div().flex_none().text_color(t.ansi1).child(`\u2193${g.behind}`)));
   }
 
+  // One harness's icon from the app's program table: a one-color glyph, a picture, or its first letter.
+  agentIcon(w, h, t) {
+    const p = h.program;
+    const name = p?.name || h.key;
+    const pic = !p?.icon
+      ? h_flex().size(AGENT_ICON).flex_none().items_center().justify_center().text_size(9.5).font_bold().text_color(t.muted).child(([...name][0] ?? "?").toUpperCase())
+      : p.tint ? svg(p.icon).size(AGENT_ICON).flex_none().text_color(t.foreground) : image(p.icon).w(AGENT_ICON).h(AGENT_ICON).flex_none();
+    return div().id(`space-agent-${w.id}-${h.id ?? h.key}`).flex_none()
+      .when(h.idle, el => el.opacity(0.4))
+      .tooltip(`${name}${h.count > 1 ? ` \u00d7${h.count}` : ""}${h.idle ? " \u00b7 idle" : ""}`)
+      .child(pic);
+  }
+
   row({ w, i, g, tree }, t) {
     const on = w.active;
     const fun = Boolean(shared("agents.fun"));
+    const allHarnesses = [...(this.harnesses?.get(w.id)?.values() ?? [])];
+    const running = fun ? [] : allHarnesses;
     const fromIndex = this.pressed === null ? -1 : spaces().findIndex(s => s.id === this.pressed);
     const colors = shared("space.colors") ?? {};
     const color = colors[w.id] ?? "ansi6";
@@ -479,15 +580,24 @@ export default class Spaces extends View {
       .relative()
       .id(`space-${w.id}`)
       .px(8)
-      .h(fun ? 78 : rowHeight({ tree }))
+      .when(fun, el => el.h(78).on_size_change((size, cx) => {
+        const zoom = Number(settings().zoom) || 1;
+        const width = size.width / zoom;
+        if (Math.abs((this.cardWidths[w.id] ?? 0) - width) > 0.5) {
+          this.cardWidths[w.id] = width;
+          cx.notify();
+        }
+      }))
+      .when(!fun && !running.length, el => el.h(rowHeight({ tree })))
+      // With agents the row grows by their line(s): the name line keeps its place.
+      .when(running.length > 0, el => el.py(6).gap(5))
       .when(fun, el => el.mb(6).overflow_hidden().border_1().border_color(on ? t.accent : t.border))
       .flex_none()
       .justify_center()
       .rounded(8)
       .when(!fun && on, (el) => el.bg(t.selected))
       .when(!fun && !on, (el) => el.hover((s) => s.bg(t.hover)))
-      .when(fun, el => el.child(image(`mods/spaces-scenery/scenes-city/${scene(w.id)}.png`).absolute().inset_0().size_full()))
-      .when(fun && !on, el => el.child(div().absolute().inset_0().bg("#10142666")))
+      .when(fun, el => el.bg(on ? t.selected : t.raised))
       .when(this.pressed === w.id && this.over !== w.id, (el) => el.opacity(0.5))
       .when(this.pressed !== null && this.over === w.id && this.pressed !== w.id, (el) => el.child(
         div().absolute().left(0).right(0).h(2).bg(t.accent)
@@ -518,6 +628,7 @@ export default class Spaces extends View {
         cx.notify();
       })
       .on_mouse_down("right", () => this.menu(w))
+      .when(fun, el => el.children((this.sessions?.get(w.id) ?? []).map(h => this.chibi(w, h, t))))
       .when(fun, el => el.child(div().absolute().top(7).left(8).right(8).child(div().px(5).py(2).rounded(4).bg("#10142699").text_color("#ffffff").truncate().child(w.name))))
       .when(!fun, el => el.child(
         h_flex()
@@ -527,6 +638,11 @@ export default class Spaces extends View {
           .when(!tree, el => el.child(h_flex().size(18).flex_none().rounded(5).bg(fill).items_center().justify_center().text_size(10.5).font_bold().text_color("#ffffff").child(spaceAvatar(w.name))))
           .child(div().flex_initial().min_w(SIDE_MIN).truncate().text_color(fun ? "#ffffff" : t.foreground).child(w.name))
           .child(g ? this.gitTail(g, tree, w.name, t) : div().flex_1()),
+      ))
+      // Under the name, starting where it starts; wraps when there are more than fit.
+      .when(running.length > 0, el => el.child(
+        h_flex().flex_wrap().gap(5).items_center().pl(tree ? 44 : 27)
+          .children(running.map(h => this.agentIcon(w, h, t))),
       ));
   }
 
